@@ -16,6 +16,7 @@
     --linie: #d0d0d0;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { font-size: 20px; }
   body {
     margin: 0;
@@ -140,6 +141,52 @@
     color: #fff;
   }
 
+  /* Mehrfachauswahl (Level 4) */
+  .mc-hinweis {
+    text-align: center;
+    color: var(--grau);
+    margin: -8px 0 18px;
+  }
+  .mc-liste {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .mc-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 72px;
+    padding: 12px 18px;
+    border: 2px solid var(--linie);
+    border-radius: 12px;
+    background: var(--grau-hell);
+    font-size: 1.6rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .mc-option input {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    accent-color: var(--gruen);
+    cursor: pointer;
+  }
+  .mc-option.gewaehlt {
+    border-color: var(--gruen);
+    background: #fff;
+  }
+  .mc-option .zeichen { margin-left: auto; }
+  .mc-option.wahr {
+    border-color: var(--gruen);
+    background: var(--gruen-hell);
+  }
+  .mc-option.wahr .zeichen { color: var(--gruen); }
+  .mc-option.unwahr { color: var(--grau); }
+  .mc-option.geprueft { cursor: default; }
+
   /* Rückmeldung */
   #rueckmeldung {
     margin-top: 20px;
@@ -222,6 +269,8 @@
     .level-reihe { grid-template-columns: repeat(2, 1fr); }
     .merksatz { font-size: 1rem; }
     .rechnung { font-size: 1.2rem; }
+    .mc-liste { grid-template-columns: 1fr; }
+    .mc-option { font-size: 1.35rem; min-height: 60px; }
   }
 </style>
 </head>
@@ -327,11 +376,16 @@
 
   <!-- Aufgabe -->
   <section>
-    <div class="aufgabe">
+    <div class="aufgabe" id="eingabeBlock">
       <span id="links"></span>
       <span>=</span>
       <input id="eingabe" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Deine Antwort" autofocus>
       <span id="rechts"></span>
+    </div>
+    <div id="mc" hidden>
+      <div class="aufgabe" id="mcFrage"></div>
+      <p class="mc-hinweis">0, 1, 2, 3 oder 4 Antworten sind richtig.</p>
+      <div class="mc-liste" id="mcListe"></div>
     </div>
     <div class="knopf-reihe">
       <button type="button" id="pruefKnopf">Prüfen</button>
@@ -357,6 +411,8 @@
   var EINHEITEN = ["mm", "cm", "dm", "m", "km"];
   var FAKTOR = [10, 10, 10, 1000]; // mm-cm, cm-dm, dm-m, m-km
   var MAX = 100000;
+  var MM = [1, 10, 100, 1000, 1000000]; // 1 Einheit in mm
+  var MC_MAX = 1000000;                 // größte Zahl in Level 4
   var ZIEL_SERIE = 10;
 
   var LOB = ["Super!", "Richtig!", "Sehr gut!", "Toll!", "Prima!"];
@@ -386,7 +442,11 @@
     erfolg: document.getElementById("erfolg"),
     erfolgText: document.getElementById("erfolgText"),
     weiterLevel: document.getElementById("weiterLevel"),
-    levelKnoepfe: document.querySelectorAll(".level-knopf")
+    levelKnoepfe: document.querySelectorAll(".level-knopf"),
+    eingabeBlock: document.getElementById("eingabeBlock"),
+    mc: document.getElementById("mc"),
+    mcFrage: document.getElementById("mcFrage"),
+    mcListe: document.getElementById("mcListe")
   };
 
   // ---------- Hilfsfunktionen ----------
@@ -397,6 +457,15 @@
 
   function waehle(liste) {
     return liste[zufall(0, liste.length - 1)];
+  }
+
+  function mischen(liste) {
+    for (var i = liste.length - 1; i > 0; i--) {
+      var j = zufall(0, i), t = liste[i];
+      liste[i] = liste[j];
+      liste[j] = t;
+    }
+    return liste;
   }
 
   // Meist kleine Zahlen, manchmal größere
@@ -452,11 +521,68 @@
     return baueAufgabe(von, von + 1);
   }
 
-  function aufgabeLevel4() {
+  function aufgabeLevel3() {
     // Zwei oder drei Stufen, höchstens bis km
     var paare = [[0, 2], [1, 3], [0, 3], [0, 2], [1, 3], [0, 3], [2, 4]];
     var p = waehle(paare);
     return Math.random() < 0.5 ? baueAufgabe(p[1], p[0]) : baueAufgabe(p[0], p[1]);
+  }
+
+  // Level 4: Mehrfachauswahl, 0 bis 4 Antworten richtig
+  function aufgabeLevel4() {
+    var anzahlRichtig = waehle([0, 1, 1, 2, 2, 2, 3, 3, 4]);
+    for (var versuch = 0; versuch < 2000; versuch++) {
+      var basis = zufall(0, 4);
+      var laenge = (basis === 4 ? zahl(9) : zahl(99)) * MM[basis];
+
+      // Einheiten, in denen die Länge eine ganze Zahl ist
+      var gueltig = [];
+      for (var u = 0; u < 5; u++) {
+        if (laenge % MM[u] === 0 && laenge / MM[u] <= MC_MAX) gueltig.push(u);
+      }
+      var quellen = gueltig.filter(function (u) { return laenge / MM[u] <= MAX; });
+      if (!quellen.length) continue;
+      var von = waehle(quellen);
+      var andere = mischen(gueltig.filter(function (u) { return u !== von; }));
+      if (andere.length < anzahlRichtig) continue;
+
+      var richtig = andere.slice(0, anzahlRichtig).map(function (u) {
+        return { einheit: u, wert: laenge / MM[u], richtig: true };
+      });
+
+      // Falsche Antworten: Fehler um 10, 100 oder 1000
+      var falsch = [];
+      andere.forEach(function (u) {
+        var t = laenge / MM[u];
+        [10, 100, 1000].forEach(function (f) {
+          [t * f, t / f].forEach(function (w) {
+            if (w % 1 === 0 && w >= 1 && w <= MC_MAX) {
+              falsch.push({ einheit: u, wert: w, richtig: false, gewicht: f === 10 ? 4 : 1 });
+            }
+          });
+        });
+      });
+      var noetig = 4 - anzahlRichtig;
+      if (falsch.length < noetig) continue;
+
+      // Fehler um 10 kommen öfter vor
+      var auswahl = [];
+      while (auswahl.length < noetig) {
+        var summe = falsch.reduce(function (s, o) { return s + o.gewicht; }, 0);
+        var z = Math.random() * summe, i = 0;
+        while (z >= falsch[i].gewicht) { z -= falsch[i].gewicht; i++; }
+        auswahl.push(falsch.splice(i, 1)[0]);
+      }
+
+      return {
+        mc: true,
+        von: von,
+        wert: laenge / MM[von],
+        laenge: laenge,
+        optionen: mischen(richtig.concat(auswahl))
+      };
+    }
+    return aufgabeLevel4();
   }
 
   function neueAufgabeErzeugen() {
@@ -464,9 +590,11 @@
     do {
       if (zustand.level === 1) a = aufgabeLevel1();
       else if (zustand.level === 2) a = aufgabeLevel2();
-      else if (zustand.level === 3) a = Math.random() < 0.5 ? aufgabeLevel1() : aufgabeLevel2();
+      else if (zustand.level === 3) a = aufgabeLevel3();
       else a = aufgabeLevel4();
-      schluessel = a.wert + EINHEITEN[a.von] + EINHEITEN[a.nach];
+      schluessel = a.mc
+        ? a.wert + EINHEITEN[a.von] + a.optionen.length
+        : a.wert + EINHEITEN[a.von] + EINHEITEN[a.nach];
       versuche++;
     } while (zustand.letzte.indexOf(schluessel) !== -1 && versuche < 50);
     zustand.letzte.push(schluessel);
@@ -477,8 +605,8 @@
   function rechenweg(a) {
     var zeichen = a.von > a.nach ? " · " : " : ";
     var teile = [format(a.wert)].concat(a.faktoren.map(format));
-    var vonText = format(a.wert) + " " + EINHEITEN[a.von];
-    var nachText = format(a.ergebnis) + " " + EINHEITEN[a.nach];
+    var vonText = format(a.wert) + "\u00A0" + EINHEITEN[a.von];
+    var nachText = format(a.ergebnis) + "\u00A0" + EINHEITEN[a.nach];
     return teile.join(zeichen) + " = " + format(a.ergebnis) + " → " + vonText + " = " + nachText;
   }
 
@@ -528,6 +656,16 @@
   function neueAufgabe() {
     zustand.aufgabe = neueAufgabeErzeugen();
     zustand.beantwortet = false;
+    el.rueckmeldung.className = "";
+    el.rueckmeldung.innerHTML = "";
+    el.pruefKnopf.textContent = "Prüfen";
+    var istMc = !!zustand.aufgabe.mc;
+    el.eingabeBlock.hidden = istMc;
+    el.mc.hidden = !istMc;
+    if (istMc) {
+      zeigeMc(zustand.aufgabe);
+      return;
+    }
     el.links.textContent = format(zustand.aufgabe.wert) + " " + EINHEITEN[zustand.aufgabe.von];
     el.rechts.textContent = EINHEITEN[zustand.aufgabe.nach];
     el.eingabe.value = "";
@@ -536,6 +674,64 @@
     el.rueckmeldung.innerHTML = "";
     el.pruefKnopf.textContent = "Prüfen";
     el.eingabe.focus();
+  }
+
+  function zeigeMc(a) {
+    el.mcFrage.textContent = format(a.wert) + " " + EINHEITEN[a.von] + " = ?";
+    el.mcListe.innerHTML = "";
+    a.optionen.forEach(function (o) {
+      var label = document.createElement("label");
+      label.className = "mc-option";
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.addEventListener("click", function (e) {
+        if (zustand.beantwortet) e.preventDefault(); // nach dem Prüfen nicht mehr ändern
+      });
+      box.addEventListener("change", function () {
+        label.classList.toggle("gewaehlt", box.checked);
+      });
+      var text = document.createElement("span");
+      text.textContent = format(o.wert) + "\u00A0" + EINHEITEN[o.einheit];
+      label.appendChild(box);
+      label.appendChild(text);
+      el.mcListe.appendChild(label);
+    });
+    // Kein Fokus auf einem Kästchen: Enter prüft, Tasten 1–4 kreuzen an
+    if (document.activeElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+  }
+
+  function pruefenMc() {
+    var a = zustand.aufgabe;
+    var labels = el.mcListe.querySelectorAll(".mc-option");
+    var alleRichtig = true;
+    a.optionen.forEach(function (o, i) {
+      var label = labels[i];
+      var box = label.querySelector("input");
+      if (box.checked !== o.richtig) alleRichtig = false;
+      label.classList.add("geprueft", o.richtig ? "wahr" : "unwahr");
+      var zeichen = document.createElement("span");
+      zeichen.className = "zeichen";
+      zeichen.textContent = o.richtig ? "✓" : "✗";
+      label.appendChild(zeichen);
+    });
+    return alleRichtig;
+  }
+
+  // Rechenwege für alle Einheiten in den Antworten
+  function rechenwegeMc(a) {
+    var einheiten = [];
+    a.optionen.forEach(function (o) {
+      if (einheiten.indexOf(o.einheit) === -1) einheiten.push(o.einheit);
+    });
+    einheiten.sort(function (x, y) { return y - x; });
+    return einheiten.map(function (u) {
+      return rechenweg({
+        von: a.von, nach: u, wert: a.wert,
+        ergebnis: a.laenge / MM[u], faktoren: faktoren(a.von, u)
+      });
+    });
   }
 
   function zeigeErfolg() {
@@ -556,20 +752,22 @@
   }
 
   function pruefen() {
-    var antwort = leseEingabe(el.eingabe.value);
-    if (antwort === null) {
+    var a = zustand.aufgabe;
+    var istMc = !!a.mc;
+    var antwort = istMc ? null : leseEingabe(el.eingabe.value);
+    if (!istMc && antwort === null) {
       el.rueckmeldung.className = "hinweis";
       el.rueckmeldung.textContent = "Bitte eine Zahl schreiben.";
       el.eingabe.focus();
       return;
     }
-    var a = zustand.aufgabe;
     zustand.beantwortet = true;
     zustand.gesamt++;
     el.eingabe.readOnly = true;
     el.erfolg.hidden = true;
 
-    if (antwort === a.ergebnis) {
+    var korrekt = istMc ? pruefenMc() : antwort === a.ergebnis;
+    if (korrekt) {
       zustand.richtig++;
       zustand.serie++;
       el.rueckmeldung.className = "richtig";
@@ -582,15 +780,19 @@
       zustand.serie = 0;
       el.rueckmeldung.className = "falsch";
       el.rueckmeldung.innerHTML = "Noch nicht. So geht es:";
-      var r = document.createElement("span");
-      r.className = "rechnung";
-      r.textContent = rechenweg(a);
-      el.rueckmeldung.appendChild(r);
+      (istMc ? rechenwegeMc(a) : [rechenweg(a)]).forEach(function (zeile) {
+        var r = document.createElement("span");
+        r.className = "rechnung";
+        r.textContent = zeile;
+        el.rueckmeldung.appendChild(r);
+      });
     }
-    el.eingabe.value = format(antwort);
     el.pruefKnopf.textContent = "Weiter →";
     zeigePunkte();
-    el.eingabe.focus();
+    if (!istMc) {
+      el.eingabe.value = format(antwort);
+      el.eingabe.focus();
+    }
   }
 
   function weiter() {
@@ -626,8 +828,15 @@
 
   // Enter auch, wenn das Eingabefeld nicht fokussiert ist
   document.addEventListener("keydown", function (e) {
+    if (e.target === el.eingabe) return;
+    // Level 4: Tasten 1–4 kreuzen an
+    if (zustand.aufgabe && zustand.aufgabe.mc && !zustand.beantwortet && /^[1-4]$/.test(e.key)) {
+      var box = el.mcListe.querySelectorAll("input")[Number(e.key) - 1];
+      if (box) box.click();
+      return;
+    }
     if (e.key !== "Enter") return;
-    if (e.target === el.eingabe || e.target.tagName === "BUTTON") return;
+    if (e.target.tagName === "BUTTON") return;
     e.preventDefault();
     weiter();
   });
