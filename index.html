@@ -384,7 +384,7 @@
     </div>
     <div id="mc" hidden>
       <div class="aufgabe" id="mcFrage"></div>
-      <p class="mc-hinweis">0, 1, 2, 3 oder 4 Antworten sind richtig.</p>
+      <p class="mc-hinweis">1, 2, 3 oder 4 Antworten sind richtig.</p>
       <div class="mc-liste" id="mcListe"></div>
     </div>
     <div class="knopf-reihe">
@@ -528,9 +528,9 @@
     return Math.random() < 0.5 ? baueAufgabe(p[1], p[0]) : baueAufgabe(p[0], p[1]);
   }
 
-  // Level 4: Mehrfachauswahl, 0 bis 4 Antworten richtig
+  // Level 4: Mehrfachauswahl, 1 bis 4 Antworten richtig
   function aufgabeLevel4() {
-    var anzahlRichtig = waehle([0, 1, 1, 2, 2, 2, 3, 3, 4]);
+    var anzahlRichtig = waehle([1, 1, 2, 2, 2, 3, 3, 4]);
     for (var versuch = 0; versuch < 2000; versuch++) {
       var basis = zufall(0, 4);
       var laenge = (basis === 4 ? zahl(9) : zahl(99)) * MM[basis];
