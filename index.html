@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Längen umrechnen</title>
+<style>
+  :root {
+    --lila: #534AB7;
+    --orange: #BA7517;
+    --gruen-hell: #E1F5EE;
+    --gruen: #0F6E56;
+    --text: #1a1a1a;
+    --grau: #5f5f5f;
+    --grau-hell: #f2f2f2;
+    --linie: #d0d0d0;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 20px; }
+  body {
+    margin: 0;
+    background: #fafafa;
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.4;
+  }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+  h1 {
+    font-size: 2.2rem;
+    margin: 0 0 20px;
+    text-align: center;
+  }
+  section {
+    background: #fff;
+    border: 1px solid var(--linie);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    min-height: 54px;
+    padding: 8px 20px;
+    border: 2px solid var(--grau);
+    background: #fff;
+    color: var(--text);
+  }
+  button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--lila);
+    outline-offset: 2px;
+  }
+
+  /* Hilfe */
+  .hilfe-kopf {
+    display: flex;
+    justify-content: center;
+  }
+  #hilfeKnopf { font-size: 1rem; }
+  #hilfe { margin-top: 16px; }
+  #hilfe[hidden] { display: none; }
+  svg { width: 100%; height: auto; display: block; }
+  .merksatz {
+    margin-top: 16px;
+    padding: 16px 20px;
+    background: var(--grau-hell);
+    border-radius: 10px;
+    font-size: 1.15rem;
+  }
+  .merksatz p { margin: 0; }
+  .merksatz p + p { margin-top: 12px; }
+  .lila { color: var(--lila); font-weight: 700; }
+  .orange { color: var(--orange); font-weight: 700; }
+
+  /* Level */
+  .level-reihe {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .level-knopf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 6px;
+  }
+  .level-knopf { font-size: 1.15rem; font-weight: 700; }
+  .level-knopf:disabled {
+    cursor: not-allowed;
+    color: #9a9a9a;
+    border-color: #c8c8c8;
+    border-style: dashed;
+    background: var(--grau-hell);
+  }
+  .level-knopf svg { width: 20px; height: 20px; margin-top: 2px; }
+  .level-knopf[aria-pressed="true"] {
+    background: var(--gruen);
+    border-color: var(--gruen);
+    color: #fff;
+  }
+
+  /* Aufgabe */
+  .aufgabe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: clamp(1.8rem, 7vw, 2.8rem);
+    font-weight: 700;
+    margin: 10px 0 20px;
+  }
+  #eingabe {
+    font: inherit;
+    width: 5.2em;
+    padding: 4px 10px;
+    text-align: center;
+    border: 3px solid var(--grau);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--text);
+  }
+  #eingabe[readonly] { background: var(--grau-hell); }
+  .knopf-reihe {
+    display: flex;
+    justify-content: center;
+  }
+  #pruefKnopf {
+    font-size: 1.3rem;
+    font-weight: 700;
+    min-width: 220px;
+    min-height: 64px;
+    background: var(--gruen);
+    border-color: var(--gruen);
+    color: #fff;
+  }
+
+  /* Rückmeldung */
+  #rueckmeldung {
+    margin-top: 20px;
+    padding: 16px 20px;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    text-align: center;
+  }
+  #rueckmeldung:empty { display: none; }
+  #rueckmeldung.richtig {
+    background: var(--gruen-hell);
+    color: var(--gruen);
+    border: 2px solid var(--gruen);
+    font-weight: 700;
+    font-size: 1.6rem;
+  }
+  #rueckmeldung.falsch {
+    background: var(--grau-hell);
+    border: 2px solid var(--linie);
+  }
+  #rueckmeldung.hinweis {
+    background: var(--grau-hell);
+    color: var(--grau);
+  }
+  .rechnung {
+    display: block;
+    margin-top: 8px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    white-space: normal;
+  }
+
+  /* Erfolg */
+  #erfolg {
+    background: var(--gruen-hell);
+    border: 3px solid var(--gruen);
+    color: var(--gruen);
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+  #erfolg[hidden] { display: none; }
+  #erfolg p { margin: 0 0 12px; }
+  #weiterLevel {
+    background: var(--gruen);
+    border-color: var(--gruen);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* Punkte */
+  .punkte {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 1.2rem;
+  }
+  .serie {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--grau);
+    font-size: 0.95rem;
+  }
+  .punkt {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--gruen);
+    background: #fff;
+  }
+  .punkt.voll { background: var(--gruen); }
+
+  @media (max-width: 620px) {
+    html { font-size: 18px; }
+    h1 { font-size: 1.8rem; }
+    section { padding: 16px; }
+    .level-reihe { grid-template-columns: repeat(2, 1fr); }
+    .merksatz { font-size: 1rem; }
+    .rechnung { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Längen umrechnen</h1>
+
+  <!-- Hilfe: Grafik und Merksatz -->
+  <section>
+    <div class="hilfe-kopf">
+      <button id="hilfeKnopf" type="button" aria-expanded="true" aria-controls="hilfe">Hilfe verstecken</button>
+    </div>
+    <div id="hilfe">
+      <svg viewBox="0 0 900 340" role="img" aria-label="Einheiten: mm, cm, dm, m, km. Nach rechts geteilt, nach links mal.">
+        <defs>
+          <marker id="spitzeLila" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#534AB7"/>
+          </marker>
+          <marker id="spitzeOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#BA7517"/>
+          </marker>
+          <marker id="spitzeGrau" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#5f5f5f"/>
+          </marker>
+        </defs>
+
+        <!-- Bögen oben: geteilt (nach rechts) -->
+        <g fill="none" stroke="#534AB7" stroke-width="4" marker-end="url(#spitzeLila)">
+          <path d="M110 112 Q180 30 250 112"/>
+          <path d="M290 112 Q360 30 430 112"/>
+          <path d="M470 112 Q540 30 610 112"/>
+          <path d="M650 112 Q720 30 790 112"/>
+        </g>
+        <g fill="#534AB7" font-size="30" font-weight="700" text-anchor="middle" font-family="system-ui, Arial, sans-serif">
+          <text x="180" y="52">: 10</text>
+          <text x="360" y="52">: 10</text>
+          <text x="540" y="52">: 10</text>
+          <text x="720" y="52">: 1000</text>
+        </g>
+
+        <!-- Kästen -->
+        <g fill="#E1F5EE" stroke="#0F6E56" stroke-width="3">
+          <rect x="40"  y="120" width="100" height="70" rx="10"/>
+          <rect x="220" y="120" width="100" height="70" rx="10"/>
+          <rect x="400" y="120" width="100" height="70" rx="10"/>
+          <rect x="580" y="120" width="100" height="70" rx="10"/>
+          <rect x="760" y="120" width="100" height="70" rx="10"/>
+        </g>
+        <g fill="#0F6E56" font-size="36" font-weight="700" text-anchor="middle" font-family="system-ui, Arial, sans-serif">
+          <text x="90"  y="168">mm</text>
+          <text x="270" y="168">cm</text>
+          <text x="450" y="168">dm</text>
+          <text x="630" y="168">m</text>
+          <text x="810" y="168">km</text>
+        </g>
+
+        <!-- Bögen unten: mal (nach links) -->
+        <g fill="none" stroke="#BA7517" stroke-width="4" marker-end="url(#spitzeOrange)">
+          <path d="M250 198 Q180 280 110 198"/>
+          <path d="M430 198 Q360 280 290 198"/>
+          <path d="M610 198 Q540 280 470 198"/>
+          <path d="M790 198 Q720 280 650 198"/>
+        </g>
+        <g fill="#BA7517" font-size="30" font-weight="700" text-anchor="middle" font-family="system-ui, Arial, sans-serif">
+          <text x="180" y="278">· 10</text>
+          <text x="360" y="278">· 10</text>
+          <text x="540" y="278">· 10</text>
+          <text x="720" y="278">· 1000</text>
+        </g>
+
+        <!-- Langer Pfeil -->
+        <line x1="250" y1="318" x2="650" y2="318" stroke="#5f5f5f" stroke-width="4" marker-end="url(#spitzeGrau)"/>
+        <g fill="#333" font-size="24" font-family="system-ui, Arial, sans-serif">
+          <text x="236" y="326" text-anchor="end">kleine Einheit</text>
+          <text x="666" y="326" text-anchor="start">große Einheit</text>
+        </g>
+      </svg>
+
+      <div class="merksatz">
+        <p>Ich rechne von einer kleinen Einheit in eine große Einheit<br>
+        → Ich rechne <span class="lila">geteilt ( : )</span></p>
+        <p>Ich rechne von einer großen Einheit in eine kleine Einheit<br>
+        → Ich rechne <span class="orange">mal ( · )</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Level -->
+  <section>
+    <div class="level-reihe" role="group" aria-label="Level">
+      <button type="button" class="level-knopf" data-level="1">Level 1</button>
+      <button type="button" class="level-knopf" data-level="2">Level 2</button>
+      <button type="button" class="level-knopf" data-level="3">Level 3</button>
+      <button type="button" class="level-knopf" data-level="4">Level 4</button>
+    </div>
+  </section>
+
+  <!-- Erfolg -->
+  <section id="erfolg" hidden aria-live="polite">
+    <p id="erfolgText"></p>
+    <button type="button" id="weiterLevel"></button>
+  </section>
+
+  <!-- Aufgabe -->
+  <section>
+    <div class="aufgabe">
+      <span id="links"></span>
+      <span>=</span>
+      <input id="eingabe" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Deine Antwort" autofocus>
+      <span id="rechts"></span>
+    </div>
+    <div class="knopf-reihe">
+      <button type="button" id="pruefKnopf">Prüfen</button>
+    </div>
+    <div id="rueckmeldung" aria-live="polite"></div>
+  </section>
+
+  <!-- Punkte -->
+  <section class="punkte">
+    <div><b>Richtig: <span id="richtigZahl">0</span> von <span id="gesamtZahl">0</span></b></div>
+    <div class="serie" aria-label="Richtig in Folge">
+      <span>10 in Folge:</span>
+      <span id="punkte" style="display:flex;gap:4px"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // Einheiten von klein nach groß und Umrechnungszahlen zwischen Nachbarn
+  var EINHEITEN = ["mm", "cm", "dm", "m", "km"];
+  var FAKTOR = [10, 10, 10, 1000]; // mm-cm, cm-dm, dm-m, m-km
+  var MAX = 100000;
+  var ZIEL_SERIE = 10;
+
+  var LOB = ["Super!", "Richtig!", "Sehr gut!", "Toll!", "Prima!"];
+
+  var zustand = {
+    level: 1,
+    freigeschaltet: 1,
+    aufgabe: null,
+    beantwortet: false,
+    richtig: 0,
+    gesamt: 0,
+    serie: 0,
+    letzte: []
+  };
+
+  var el = {
+    hilfe: document.getElementById("hilfe"),
+    hilfeKnopf: document.getElementById("hilfeKnopf"),
+    links: document.getElementById("links"),
+    rechts: document.getElementById("rechts"),
+    eingabe: document.getElementById("eingabe"),
+    pruefKnopf: document.getElementById("pruefKnopf"),
+    rueckmeldung: document.getElementById("rueckmeldung"),
+    richtigZahl: document.getElementById("richtigZahl"),
+    gesamtZahl: document.getElementById("gesamtZahl"),
+    punkte: document.getElementById("punkte"),
+    erfolg: document.getElementById("erfolg"),
+    erfolgText: document.getElementById("erfolgText"),
+    weiterLevel: document.getElementById("weiterLevel"),
+    levelKnoepfe: document.querySelectorAll(".level-knopf")
+  };
+
+  // ---------- Hilfsfunktionen ----------
+
+  function zufall(min, max) {
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  function waehle(liste) {
+    return liste[zufall(0, liste.length - 1)];
+  }
+
+  // Meist kleine Zahlen, manchmal größere
+  function zahl(max) {
+    var r = Math.random();
+    if (max <= 10 || r < 0.5) return zufall(1, Math.min(10, max));
+    if (r < 0.8) return zufall(11, Math.min(50, max));
+    return zufall(Math.min(51, max), max);
+  }
+
+  // Zahlen ab 10 000 in Dreiergruppen mit Leerzeichen
+  function format(n) {
+    var s = String(n);
+    if (s.length < 5) return s;
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  }
+
+  // Faktoren zwischen zwei Einheiten (Index klein → Index groß)
+  function faktoren(a, b) {
+    var lo = Math.min(a, b), hi = Math.max(a, b), f = [];
+    for (var i = lo; i < hi; i++) f.push(FAKTOR[i]);
+    return f;
+  }
+
+  function produkt(f) {
+    return f.reduce(function (x, y) { return x * y; }, 1);
+  }
+
+  // Aufgabe: von Einheit "von" in Einheit "nach"
+  function baueAufgabe(von, nach) {
+    var f = faktoren(von, nach);
+    var F = produkt(f);
+    var wert, ergebnis;
+    if (von > nach) {
+      // groß → klein: mal
+      wert = zahl(Math.min(99, Math.floor(MAX / F)));
+      ergebnis = wert * F;
+    } else {
+      // klein → groß: geteilt
+      ergebnis = zahl(Math.min(99, Math.floor(MAX / F)));
+      wert = ergebnis * F;
+    }
+    return { von: von, nach: nach, wert: wert, ergebnis: ergebnis, faktoren: f };
+  }
+
+  function aufgabeLevel1() {
+    var von = zufall(1, 4);          // cm, dm, m, km
+    return baueAufgabe(von, von - 1);
+  }
+
+  function aufgabeLevel2() {
+    var von = zufall(0, 3);          // mm, cm, dm, m
+    return baueAufgabe(von, von + 1);
+  }
+
+  function aufgabeLevel4() {
+    // Zwei oder drei Stufen, höchstens bis km
+    var paare = [[0, 2], [1, 3], [0, 3], [0, 2], [1, 3], [0, 3], [2, 4]];
+    var p = waehle(paare);
+    return Math.random() < 0.5 ? baueAufgabe(p[1], p[0]) : baueAufgabe(p[0], p[1]);
+  }
+
+  function neueAufgabeErzeugen() {
+    var a, schluessel, versuche = 0;
+    do {
+      if (zustand.level === 1) a = aufgabeLevel1();
+      else if (zustand.level === 2) a = aufgabeLevel2();
+      else if (zustand.level === 3) a = Math.random() < 0.5 ? aufgabeLevel1() : aufgabeLevel2();
+      else a = aufgabeLevel4();
+      schluessel = a.wert + EINHEITEN[a.von] + EINHEITEN[a.nach];
+      versuche++;
+    } while (zustand.letzte.indexOf(schluessel) !== -1 && versuche < 50);
+    zustand.letzte.push(schluessel);
+    if (zustand.letzte.length > 8) zustand.letzte.shift();
+    return a;
+  }
+
+  function rechenweg(a) {
+    var zeichen = a.von > a.nach ? " · " : " : ";
+    var teile = [format(a.wert)].concat(a.faktoren.map(format));
+    var vonText = format(a.wert) + " " + EINHEITEN[a.von];
+    var nachText = format(a.ergebnis) + " " + EINHEITEN[a.nach];
+    return teile.join(zeichen) + " = " + format(a.ergebnis) + " → " + vonText + " = " + nachText;
+  }
+
+  function leseEingabe(text) {
+    var s = text.replace(/[\s.  ]/g, "");
+    if (!/^\d+$/.test(s)) return null;
+    return parseInt(s, 10);
+  }
+
+  // ---------- Anzeige ----------
+
+  function zeigePunkte() {
+    el.richtigZahl.textContent = zustand.richtig;
+    el.gesamtZahl.textContent = zustand.gesamt;
+    var html = "";
+    for (var i = 0; i < ZIEL_SERIE; i++) {
+      html += '<span class="punkt' + (i < zustand.serie ? " voll" : "") + '"></span>';
+    }
+    el.punkte.innerHTML = html;
+  }
+
+  var SCHLOSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="#9a9a9a"/>' +
+    '<path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#9a9a9a" stroke-width="2.5"/></svg>';
+
+  function zeigeLevel() {
+    el.levelKnoepfe.forEach(function (k) {
+      var n = Number(k.dataset.level);
+      var offen = n <= zustand.freigeschaltet;
+      k.disabled = !offen;
+      k.innerHTML = "Level " + n + (offen ? "" : SCHLOSS);
+      k.setAttribute("aria-pressed", String(n === zustand.level));
+    });
+  }
+
+  // Freigeschaltete Level bleiben bis zum Schließen des Tabs gespeichert
+  function ladeFreigabe() {
+    try {
+      var n = Number(sessionStorage.getItem("laengenLevel"));
+      if (n >= 1 && n <= 4) zustand.freigeschaltet = n;
+    } catch (e) {}
+  }
+
+  function speichereFreigabe() {
+    try { sessionStorage.setItem("laengenLevel", String(zustand.freigeschaltet)); } catch (e) {}
+  }
+
+  function neueAufgabe() {
+    zustand.aufgabe = neueAufgabeErzeugen();
+    zustand.beantwortet = false;
+    el.links.textContent = format(zustand.aufgabe.wert) + " " + EINHEITEN[zustand.aufgabe.von];
+    el.rechts.textContent = EINHEITEN[zustand.aufgabe.nach];
+    el.eingabe.value = "";
+    el.eingabe.readOnly = false;
+    el.rueckmeldung.className = "";
+    el.rueckmeldung.innerHTML = "";
+    el.pruefKnopf.textContent = "Prüfen";
+    el.eingabe.focus();
+  }
+
+  function zeigeErfolg() {
+    if (zustand.level < 4) {
+      if (zustand.freigeschaltet < zustand.level + 1) {
+        zustand.freigeschaltet = zustand.level + 1;
+        speichereFreigabe();
+        zeigeLevel();
+      }
+      el.erfolgText.textContent = "Toll! 10 richtig in Folge! Jetzt Level " + (zustand.level + 1) + ".";
+      el.weiterLevel.textContent = "Level " + (zustand.level + 1) + " →";
+      el.weiterLevel.hidden = false;
+    } else {
+      el.erfolgText.textContent = "Toll! 10 richtig in Folge! Du kannst alle Level!";
+      el.weiterLevel.hidden = true;
+    }
+    el.erfolg.hidden = false;
+  }
+
+  function pruefen() {
+    var antwort = leseEingabe(el.eingabe.value);
+    if (antwort === null) {
+      el.rueckmeldung.className = "hinweis";
+      el.rueckmeldung.textContent = "Bitte eine Zahl schreiben.";
+      el.eingabe.focus();
+      return;
+    }
+    var a = zustand.aufgabe;
+    zustand.beantwortet = true;
+    zustand.gesamt++;
+    el.eingabe.readOnly = true;
+    el.erfolg.hidden = true;
+
+    if (antwort === a.ergebnis) {
+      zustand.richtig++;
+      zustand.serie++;
+      el.rueckmeldung.className = "richtig";
+      el.rueckmeldung.textContent = waehle(LOB);
+      if (zustand.serie >= ZIEL_SERIE) {
+        zeigeErfolg();
+        zustand.serie = 0;
+      }
+    } else {
+      zustand.serie = 0;
+      el.rueckmeldung.className = "falsch";
+      el.rueckmeldung.innerHTML = "Noch nicht. So geht es:";
+      var r = document.createElement("span");
+      r.className = "rechnung";
+      r.textContent = rechenweg(a);
+      el.rueckmeldung.appendChild(r);
+    }
+    el.eingabe.value = format(antwort);
+    el.pruefKnopf.textContent = "Weiter →";
+    zeigePunkte();
+    el.eingabe.focus();
+  }
+
+  function weiter() {
+    if (zustand.beantwortet) neueAufgabe();
+    else pruefen();
+  }
+
+  function neuStart() {
+    zustand.richtig = 0;
+    zustand.gesamt = 0;
+    zustand.serie = 0;
+    zustand.letzte = [];
+    el.erfolg.hidden = true;
+    zeigePunkte();
+    neueAufgabe();
+  }
+
+  function setzeLevel(n) {
+    if (n > zustand.freigeschaltet) return;
+    zustand.level = n;
+    zeigeLevel();
+    neuStart();
+  }
+
+  // ---------- Ereignisse ----------
+
+  el.eingabe.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      weiter();
+    }
+  });
+
+  // Enter auch, wenn das Eingabefeld nicht fokussiert ist
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    if (e.target === el.eingabe || e.target.tagName === "BUTTON") return;
+    e.preventDefault();
+    weiter();
+  });
+
+  el.pruefKnopf.addEventListener("click", weiter);
+
+  el.levelKnoepfe.forEach(function (k) {
+    k.addEventListener("click", function () { setzeLevel(Number(k.dataset.level)); });
+  });
+
+  el.weiterLevel.addEventListener("click", function () {
+    if (zustand.level < 4) setzeLevel(zustand.level + 1);
+  });
+
+  el.hilfeKnopf.addEventListener("click", function () {
+    var offen = el.hilfe.hidden;
+    el.hilfe.hidden = !offen;
+    el.hilfeKnopf.textContent = offen ? "Hilfe verstecken" : "Hilfe zeigen";
+    el.hilfeKnopf.setAttribute("aria-expanded", String(offen));
+    el.eingabe.focus();
+  });
+
+  // ---------- Start ----------
+  ladeFreigabe();
+  zeigeLevel();
+  zeigePunkte();
+  neueAufgabe();
+})();
+</script>
+</body>
+</html>
